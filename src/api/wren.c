@@ -1241,27 +1241,43 @@ static void wren_fget(WrenVM* vm)
 
 static void wren_fset(WrenVM* vm)
 {
-    tic_mem* tic = (tic_mem*)getWrenCore(vm);
-    s32 top = wrenGetSlotCount(vm);
+  tic_mem* tic = (tic_mem*)getWrenCore(vm);
+  s32 top = wrenGetSlotCount(vm);
 
-    if(top > 1)
+  if (top > 1)
+  {
+    u32 index = getWrenNumber(vm, 1);
+
+    if (top > 2)
     {
-        u32 index = getWrenNumber(vm, 1);
+      u32 flag = getWrenNumber(vm, 2);
 
-        if(top > 2)
-        {
-            u32 flag = getWrenNumber(vm, 2);
-
-            if(top > 3)
-            {
-                bool value = wrenGetSlotBool(vm, 3);
-                tic_api_fset(tic, index, flag, value);
-                return;
-            }
-        }
+      if (top > 3)
+      {
+        bool value = wrenGetSlotBool(vm, 3);
+        tic_api_fset(tic, index, flag, value);
+        return;
+      }
     }
+  }
 
-    wrenError(vm, "invalid params, fset(sprite,flag,value)\n");
+  wrenError(vm, "invalid params, fset(sprite,flag,value)\n");
+}
+
+static void wren_fft(WrenVM* vm)
+{
+  tic_mem* tic = (tic_mem*)getWrenCore(vm);
+  s32 top = wrenGetSlotCount(vm);
+
+  if (top > 1)
+  {
+    double freq = getWrenNumber(vm, 1);
+
+    wrenSetSlotDouble(vm, 0, tic_api_fft(tic, freq));
+    return;
+  }
+
+  wrenError(vm, "invalid params, fft(freq)\n");
 }
 
 static WrenForeignMethodFn foreignTicMethods(const char* signature)

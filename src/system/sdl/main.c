@@ -23,9 +23,11 @@
 #include "studio/system.h"
 #include "tools.h"
 
+#include "ext/fft.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+
 
 #if defined(CRT_SHADER_SUPPORT)
 
@@ -188,10 +190,17 @@ static struct
 
     struct
     {
-        SDL_AudioSpec       spec;
-        SDL_AudioDeviceID   device;
+      SDL_AudioSpec       spec;
+      SDL_AudioDeviceID   device;
     } audio;
+
+    struct
+    {
+      SDL_AudioSpec       spec;
+      SDL_AudioDeviceID   device;
+    } audioIn;
 } platform
+
 #if defined(TOUCH_INPUT_SUPPORT)
 = 
 {
@@ -218,6 +227,13 @@ static void initSound()
         .userdata = NULL,
     };
 
+    FFT_Create();
+
+    FFT_Settings fftSettings;
+    fftSettings.bUseRecordingDevice = false;
+    fftSettings.pDeviceID = NULL;
+
+    FFT_Open(&fftSettings);
     platform.audio.device = SDL_OpenAudioDevice(NULL, 0, &want, &platform.audio.spec, 0);
 }
 
@@ -1754,6 +1770,8 @@ static s32 start(s32 argc, char **argv, const char* folder)
 
                 SDL_DestroyWindow(platform.window);
                 SDL_CloseAudioDevice(platform.audio.device);
+                FFT_Close();
+                FFT_Destroy();
 
                 for(s32 i = 0; i < COUNT_OF(platform.mouse.cursors); i++)
                     SDL_FreeCursor(platform.mouse.cursors[i]);

@@ -907,6 +907,17 @@ static duk_ret_t duk_fset(duk_context* duk)
     return 0;
 }
 
+static duk_ret_t duk_fft(duk_context* duk)
+{
+  tic_mem* tic = (tic_mem*)getDukCore(duk);
+
+  duk_double_t freq = duk_opt_number(duk, 0, 0);
+
+  tic_api_fft(tic, freq);
+
+  return 0;
+}
+
 static u64 ForceExitCounter = 0;
 
 s32 duk_timeout_check(void* udata)

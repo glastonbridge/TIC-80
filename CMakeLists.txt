@@ -742,6 +742,9 @@ set(TIC80STUDIO_SRC
     ${TIC80LIB_DIR}/ext/history.c
     ${TIC80LIB_DIR}/ext/gif.c
     ${TIC80LIB_DIR}/ext/png.c
+    ${TIC80LIB_DIR}/ext/fft.c
+    ${TIC80LIB_DIR}/ext/kiss_fft.c
+    ${TIC80LIB_DIR}/ext/kiss_fftr.c
 )
 
 if(${BUILD_PRO})
