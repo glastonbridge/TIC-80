@@ -4124,8 +4124,6 @@ static void tick(Console* console)
         else printBack(console, "\n loading cart...");
     }
 
-    if (getStudioMode(console->studio) != TIC_CONSOLE_MODE) return;
-
     tic_api_cls(tic, TIC_COLOR_BG);
     drawConsoleText(console);
 
@@ -4149,6 +4147,10 @@ static void tick(Console* console)
     {   
         if(console->cursor.delay)
             console->cursor.delay--;
+
+        console->tickCounter++;
+
+        if (getStudioMode(console->studio) != TIC_CONSOLE_MODE) return;
 
         drawCursor(console);
 

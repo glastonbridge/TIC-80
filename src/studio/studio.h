@@ -94,6 +94,13 @@ typedef struct
 #define CMD_PARAMS_DEF(name, ctype, type, post, help) ctype name;
     CMD_PARAMS_LIST(CMD_PARAMS_DEF)
 #undef  CMD_PARAMS_DEF
+
+    const char *codeexport;
+    const char *codeimport;
+    s32 delay;
+    s32 lowerlimit;
+    s32 upperlimit;
+    s32 battletime;
 } StartArgs;
 
 typedef enum
@@ -261,3 +268,37 @@ s32 calcWaveAnimation(tic_mem* tic, u32 index, s32 channel);
 void map2ram(tic_ram* ram, const tic_map* src);
 void tiles2ram(tic_ram* ram, const tic_tiles* src);
 void fadePalette(tic_palette* pal, s32 value);
+
+typedef struct
+{
+    char* exp;
+    char* imp;
+
+    struct
+    {
+        tic_code code;
+        char postag[32];
+    } last;
+
+    s32 delay;
+    s32 ticks;
+
+    struct
+    {
+        s32 lower;
+        s32 upper;
+        s32 current;
+    } limit;
+
+    struct
+    {
+        s32 started;
+        s32 time;
+        s32 left;
+
+        bool hidetime;
+    } battle;
+
+} Lovebyte;
+
+Lovebyte* getLovebyte(Studio* studio);

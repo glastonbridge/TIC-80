@@ -212,6 +212,9 @@ struct Studio
     tic_fs* fs;
     s32 samplerate;
     tic_font systemFont;
+
+    Lovebyte lovebyte;
+
 };
 
 #if defined(BUILD_EDITORS)
@@ -1664,6 +1667,21 @@ static void switchCrtMonitor(Studio* studio)
 }
 #endif
 
+static u32 getTime()
+{
+    return tic_sys_counter_get() * 1000 / tic_sys_freq_get();
+}
+
+static void hideBattleTime(Studio* studio)
+{
+    studio->lovebyte.battle.hidetime = !studio->lovebyte.battle.hidetime;
+}
+
+static void startBattle(Studio* studio)
+{
+    studio->lovebyte.battle.started = getTime();
+}
+
 #if defined(TIC80_PRO)
 
 static void switchBank(Studio* studio, s32 bank)
@@ -1780,6 +1798,8 @@ static void processShortcuts(Studio* studio)
         }
         else if(keyWasPressedOnce(studio, tic_key_f8)) takeScreenshot(studio);
         else if(keyWasPressedOnce(studio, tic_key_f9)) startVideoRecord(studio);
+        else if(keyWasPressedOnce(studio, tic_key_f10)) hideBattleTime(studio);
+        else if(keyWasPressedOnce(studio, tic_key_f12)) startBattle(studio);
         else if(studio->mode == TIC_RUN_MODE && keyWasPressedOnce(studio, tic_key_f7))
             setCoverImage(studio);
 
@@ -2094,6 +2114,86 @@ static void processMouseStates(Studio* studio)
     }
 }
 
+static void doCodeExport(Studio* studio)
+{
+    char pos[sizeof studio->lovebyte.last.postag];
+    {
+        s32 x = 0, y = 0;
+
+        if(studio->mode != TIC_RUN_MODE)
+        {
+            codeGetPos(studio->code, &x, &y);
+            x++; y++;
+        }
+
+        sprintf(pos, "-- pos: %i,%i\n", x, y);
+    }
+
+    if(strcmp(studio->lovebyte.last.postag, pos) || strcmp(studio->lovebyte.last.code.data, studio->code->src))
+    {
+        FILE* file = fopen(studio->lovebyte.exp, "wb");
+
+        if(file)
+        {
+            strcpy(studio->lovebyte.last.postag, pos);
+            strcpy(studio->lovebyte.last.code.data, studio->code->src);
+
+            fwrite(pos, 1, strlen(pos), file);
+            fwrite(studio->code->src, 1, strlen(studio->code->src), file);
+            fclose(file);
+        }        
+    }
+}
+
+static void doCodeImport(Studio* studio)
+{
+    FILE* file = fopen(studio->lovebyte.imp, "rb");
+
+    if(file)
+    {
+        static tic_code code;
+        code.data[fread(code.data, 1, sizeof(tic_code), file)] = '\0';
+
+        char* end = strchr(code.data, '\n');
+
+        if(end)
+        {
+            static const char PosTag[] = "-- pos: ";
+            enum{TagSize = sizeof PosTag - 1};
+
+            if(memcmp(code.data, PosTag, TagSize) == 0)
+            {
+                char* start = code.data + TagSize;
+                char* sep = strchr(start, ',');
+
+                if(sep)
+                {
+                    *sep = *end = '\0';
+                    s32 x = atoi(start);
+                    s32 y = atoi(sep + 1);
+
+                    if(x == 0 && y == 0)
+                    {
+                        if(studio->mode != TIC_RUN_MODE)
+                            runGame(studio);
+                    }
+                    else
+                    {
+                        s32 offset = end - code.data + 1;
+                        memcpy(studio->code->src, code.data + offset, sizeof(tic_code) - offset);
+                        codeSetPos(studio->code, x - 1, y - 1);
+
+                        if(studio->mode == TIC_RUN_MODE)
+                            setStudioMode(studio, TIC_CODE_MODE);
+                    }
+                }
+            }
+        }
+
+        fclose(file);
+    }
+}
+
 static void blitCursor(Studio* studio)
 {
     tic_mem* tic = studio->tic;
@@ -2205,6 +2305,37 @@ void studio_tick(Studio* studio, tic80_input input)
 
 #if defined(BUILD_EDITORS)
     tic_net_end(studio->net);
+
+    {
+        Lovebyte* lb = &(studio->lovebyte);
+        if(lb->battle.started)
+        {
+            u32 passed = getTime() - lb->battle.started;
+            lb->battle.left = lb->battle.time - passed;
+
+            if(lb->battle.left > 0)
+            {
+                s32 delta = lb->battle.time / (lb->limit.upper - lb->limit.lower);
+                lb->limit.current = lb->limit.upper - passed / delta;
+            }
+            else
+            {
+                lb->battle.left = 0;
+                lb->limit.current = lb->limit.lower;
+            }
+        }
+
+        if(lb->delay)
+            if(lb->ticks++ < lb->delay)
+                return;
+
+        if(lb->exp)
+            doCodeExport(studio);
+        else if(lb->imp)
+            doCodeImport(studio);
+
+        lb->ticks = 0;
+    }
 #endif
 }
 
@@ -2307,7 +2438,16 @@ void studio_delete(Studio* studio)
 #endif
 
     free(studio->fs);
+
+    if(studio->lovebyte.exp) free(studio->lovebyte.exp);
+    if(studio->lovebyte.imp) free(studio->lovebyte.imp);
+
     free(studio);
+}
+
+Lovebyte* getLovebyte(Studio* studio)
+{
+    return studio->lovebyte.exp || studio->lovebyte.imp ? &(studio->lovebyte) : NULL;
 }
 
 static StartArgs parseArgs(s32 argc, char **argv)
@@ -2318,7 +2458,7 @@ static StartArgs parseArgs(s32 argc, char **argv)
         NULL,
     };
 
-    StartArgs args = {.volume = -1};
+    StartArgs args = {.volume = -1, .lowerlimit = 256, .upperlimit = 512};
 
     struct argparse_option options[] = 
     {
@@ -2326,6 +2466,13 @@ static StartArgs parseArgs(s32 argc, char **argv)
 #define CMD_PARAMS_DEF(name, ctype, type, post, help) OPT_##type('\0', #name, &args.name, help),
         CMD_PARAMS_LIST(CMD_PARAMS_DEF)
 #undef  CMD_PARAMS_DEF
+        OPT_GROUP("LOVEBYTE options:\n"),
+        OPT_STRING('e',    "codeexport",    &args.codeexport,   "export code to filename"),
+        OPT_STRING('i',    "codeimport",    &args.codeimport,   "import code from filename"),
+        OPT_INTEGER('d',   "delay",         &args.delay,        "codeexport / codeimport update interval in ticks"),
+        OPT_INTEGER('l',   "lowerlimit",    &args.lowerlimit,   "lower limit for code size (256 by default)"),
+        OPT_INTEGER('u',   "upperlimit",    &args.upperlimit,   "upper limit for code size (512 by default)"),
+        OPT_INTEGER('b',   "battletime",    &args.battletime,   "battletime in minutes"),    
         OPT_END(),
     };
 
@@ -2414,6 +2561,9 @@ Studio* studio_create(s32 argc, char **argv, s32 samplerate, tic80_pixel_color_f
 
         .samplerate = samplerate,
         .net = tic_net_create("http://"TIC_HOST),
+
+        .lovebyte = {0},
+
 #endif
         .tic = tic_core_create(samplerate, format),
     };
@@ -2514,11 +2664,30 @@ Studio* studio_create(s32 argc, char **argv, s32 samplerate, tic80_pixel_color_f
     studio->config->data.soft               |= args.soft;
     studio->config->data.cli                |= args.cli;
 
+    if(args.codeexport)
+        studio->lovebyte.exp = strdup(args.codeexport);
+    else if(args.codeimport)
+        studio->lovebyte.imp = strdup(args.codeimport);
+
+    studio->lovebyte.delay = args.delay;
+    studio->lovebyte.limit.lower = args.lowerlimit;
+
+    studio->lovebyte.limit.current
+        = studio->lovebyte.limit.upper 
+        = args.upperlimit;
+
+    studio->lovebyte.battle.left 
+        = studio->lovebyte.battle.time 
+        = args.battletime * 60 * 1000;
+
     if(args.cli)
         args.skip = true;
 
     if(args.skip)
-        setStudioMode(studio, TIC_CONSOLE_MODE);
+    {
+        studio->console->tick(studio->console);
+        gotoCode(studio);
+    }
 
     return studio;
 }
