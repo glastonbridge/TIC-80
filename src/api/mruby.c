@@ -510,15 +510,25 @@ static mrb_value mrb_fget(mrb_state* mrb, mrb_value self)
 
 static mrb_value mrb_fset(mrb_state* mrb, mrb_value self)
 {
-    mrb_int index, flag;
-    mrb_bool value;
-    mrb_get_args(mrb, "iib", &index, &flag, &value);
+  mrb_int index, flag;
+  mrb_bool value;
+  mrb_get_args(mrb, "iib", &index, &flag, &value);
 
-    tic_mem* tic = (tic_mem*)getMRubyMachine(mrb);
+  tic_mem* tic = (tic_mem*)getMRubyMachine(mrb);
 
-    tic_api_fset(tic, index, flag, value);
+  tic_api_fset(tic, index, flag, value);
 
-    return mrb_nil_value();
+  return mrb_nil_value();
+}
+
+static mrb_value mrb_fft(mrb_state* mrb, mrb_value self)
+{
+  mrb_int index;
+  mrb_get_args(mrb, "i", &index);
+
+  tic_mem* tic = (tic_mem*)getMRubyMachine(mrb);
+
+  return mrb_float_value(mrb, tic_api_fft(tic, index));
 }
 
 typedef struct

@@ -432,6 +432,9 @@ macro(MACRO_CORE SCRIPT DEFINE BUILD_DEPRECATED)
         ${TIC80CORE_DIR}/cart.c
         ${TIC80CORE_DIR}/tools.c
         ${TIC80CORE_DIR}/tilesheet.c
+        ${TIC80CORE_DIR}/ext/fft.c
+        ${TIC80CORE_DIR}/ext/kiss_fft.c
+        ${TIC80CORE_DIR}/ext/kiss_fftr.c
     )
 
     if(${BUILD_DEPRECATED})
