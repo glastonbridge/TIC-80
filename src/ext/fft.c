@@ -8,6 +8,11 @@
 #include <memory.h>
 #include "api.h"
 
+#ifndef FALSE
+#define FALSE 0
+#define TRUE 1
+#endif
+
   //////////////////////////////////////////////////////////////////////////
 
   kiss_fftr_cfg fftcfg;
@@ -183,8 +188,8 @@
   {
     u32 interval = FFT_SIZE / 256 / 2; // the 2 is to discard super high frequencies, they suck
     freq = freq * interval;
-    freq = min(freq, FFT_SIZE);
-    freq = max(freq, 0);
+    freq = fmin(freq, FFT_SIZE);
+    freq = fmax(freq, 0);
 
     static const float scaling = 1.0f / (float)FFT_SIZE;
     float res = 0;

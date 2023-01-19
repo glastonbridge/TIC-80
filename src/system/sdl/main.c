@@ -287,6 +287,15 @@ static void audioCallback(void* userdata, u8* stream, s32 len)
     }
 }
 
+void *deviceId = NULL;
+void find_fft_device_by_id(const bool bIsCaptureDevice, const char *szDeviceName, void *pDeviceID, void *pUserContext)
+{
+    if (strcmp(szDeviceName, studio_config(platform.studio)->fftdevice) == 0)
+    {
+        deviceId = pDeviceID;
+    }
+}
+
 static void initSound()
 {
     platform.audio.mutex = SDL_CreateMutex();
@@ -306,6 +315,20 @@ static void initSound()
     FFT_Settings fftSettings;
     fftSettings.bUseRecordingDevice = false;
     fftSettings.pDeviceID = NULL;
+
+    if (studio_config(platform.studio)->fftdevice != NULL)
+    {
+        FFT_EnumerateDevices(find_fft_device_by_id, NULL);
+        if (deviceId != NULL)
+        {
+            fftSettings.pDeviceID = deviceId;
+        }
+        else
+        {
+            printf("Selected device was not found");
+            exit(1);
+        }
+    }
 
     FFT_Open(&fftSettings);
     platform.audio.device = SDL_OpenAudioDevice(NULL, 0, &want, &platform.audio.spec, 0);
