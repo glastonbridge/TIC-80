@@ -101,7 +101,7 @@ typedef struct
     s32 lowerlimit;
     s32 upperlimit;
     s32 battletime;
-    bool fftlist;
+    s32 fftlist;
     const char *fftdevice;
 } StartArgs;
 

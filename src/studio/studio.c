@@ -2458,7 +2458,7 @@ static StartArgs parseArgs(s32 argc, char **argv)
         NULL,
     };
 
-    StartArgs args = {.volume = -1, .lowerlimit = 256, .upperlimit = 512};
+    StartArgs args = {.volume = -1, .lowerlimit = 256, .upperlimit = 512, .fftlist = 0};
 
     struct argparse_option options[] = 
     {
